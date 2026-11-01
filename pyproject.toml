@@ -1,0 +1,16 @@
+[project]
+name = "usb-monitor"
+version = "0.1.0"
+description = "Live monitor for connected USB devices such as RTL-SDR sticks, Arduino and ESP32 boards"
+readme = "README.md"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = ["PyQt6>=6.8"]
+
+[project.scripts]
+usb-monitor = "usb_monitor.main:main"
+
+[build-system]
+requires = ["uv_build>=0.12.16,<0.13.0"]
+build-backend = "uv_build"
