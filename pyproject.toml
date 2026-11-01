@@ -1,6 +1,6 @@
 [project]
 name = "usb-monitor"
-version = "0.1.0"
+version = "0.1.1"
 description = "Live monitor for connected USB devices such as RTL-SDR sticks, Arduino and ESP32 boards"
 readme = "README.md"
 license = "GPL-3.0-only"

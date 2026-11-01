@@ -27,6 +27,12 @@ NODE_DIRS = {
 }
 SKIP_DIRS = {"power", "input", "subsystem", "driver", "device"}
 
+# Reading these takes the device's lock, which a hub holds for seconds while the kernel retries
+# a failing device on one of its ports. They can't change while a device stays connected, so
+# each is read once, or every scan would freeze the window whenever a cable plays up.
+LOCKED_ATTRS = ("manufacturer", "product", "serial", "bMaxPower")
+_locked_values: dict[tuple[str, str], dict[str, str]] = {}
+
 
 @dataclass
 class Interface:
@@ -210,6 +216,13 @@ def _interfaces(path: Path, prefix: str) -> list[Interface]:
     return interfaces
 
 
+def _locked_attrs(path: Path, number: str) -> dict[str, str]:
+    key = (str(path), number)
+    if key not in _locked_values:
+        _locked_values[key] = {name: _read(path / name) for name in LOCKED_ATTRS}
+    return _locked_values[key]
+
+
 def _read_device(path: Path) -> Device | None:
     port = path.name
     vid = _read(path / "idVendor")
@@ -225,18 +238,19 @@ def _read_device(path: Path) -> Device | None:
     classes = [interface.klass for interface in interfaces]
     category, known_name = known.classify(f"{vid}:{pid}", classes, nodes)
     urbs = _read(path / "urbnum")
+    locked = _locked_attrs(path, number)
     return Device(
         port=port,
         bus=int(bus),
         number=int(number),
         vid=vid,
         pid=pid,
-        manufacturer=_read(path / "manufacturer"),
-        product=_read(path / "product"),
-        serial=_read(path / "serial"),
+        manufacturer=locked["manufacturer"],
+        product=locked["product"],
+        serial=locked["serial"],
         speed=_read(path / "speed"),
         usb_version=_read(path / "version"),
-        max_power=_read(path / "bMaxPower"),
+        max_power=locked["bMaxPower"],
         urbs=int(urbs) if urbs.isdigit() else 0,
         power_state=_read(path / "power" / "runtime_status"),
         interfaces=interfaces,
@@ -255,6 +269,9 @@ def scan(root: Path = SYSFS) -> dict[tuple[int, int], Device]:
         device = _read_device(root / name)
         if device:
             devices[device.key] = device
+    present = {(str(root / d.port), str(d.number)) for d in devices.values()}
+    for key in [key for key in _locked_values if key not in present]:
+        del _locked_values[key]
     return devices
 
 

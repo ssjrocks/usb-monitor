@@ -95,6 +95,17 @@ def test_serial_chip_without_tty_gets_a_hint(tmp_path):
     assert any("brltty" in hint for hint in devices.hints(found))
 
 
+def test_lock_taking_attributes_are_read_once_per_connection(tmp_path):
+    folder = fake_device(tmp_path, "1-1", "2341:0043", 4, product="First", bMaxPower="100mA")
+    assert devices.scan(tmp_path)[(1, 4)].product == "First"
+
+    (folder / "product").write_text("Second\n")
+    assert devices.scan(tmp_path)[(1, 4)].product == "First"
+
+    (folder / "devnum").write_text("5\n")
+    assert devices.scan(tmp_path)[(1, 5)].product == "Second"
+
+
 def test_diff_sees_reenumeration_on_same_port(tmp_path):
     device = fake_device(tmp_path, "1-1", "303a:1001", 4)
     fake_interface(device, "1-1:1.0", "02", "cdc_acm")
